@@ -7,7 +7,7 @@ use Getopt::Long;
 use File::Basename;
 use File::Spec::Functions;
 
-our ( $VERSION ) = '$Revision: 1.2 $' =~ /([\d.]+)/;
+our ( $VERSION ) = '$Revision: 1.3 $' =~ /([\d.]+)/;
 our $prog   = basename( $0, '.pl' );
 
 our %param;
@@ -198,6 +198,12 @@ specified by the B<--libdir> option.  It defaults to
 specified by the B<--includedir> option.  It defaults to
 
   includedir=${prefix}/include
+
+or
+
+  includedir=${prefix}/include/${pkg}
+
+if the B<--pkg> option is specified.
 
 =back
 
