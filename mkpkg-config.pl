@@ -7,7 +7,7 @@ use Getopt::Long;
 use File::Basename;
 use File::Spec::Functions;
 
-our ( $VERSION ) = '$Revision: 1.1 $' =~ /([\d.]+)/;
+our ( $VERSION ) = '$Revision: 1.2 $' =~ /([\d.]+)/;
 our $prog   = basename( $0, '.pl' );
 
 our %param;
@@ -76,7 +76,6 @@ sub parse_opts
                     output=s
 
 		    prefix=s
-		    exec_prefix=s
 		    exec_suffix=s
 		    libdir=s
 		    includedir=s
@@ -130,7 +129,7 @@ sub parse_opts
 		       map { /^[-\/.]/ ? $_ : '-l' . $_ } 
 		       split(/\s+|\s*,\s*/, $param{libs} ) );
 
-  $param{cflags} = '-I${includedir}/${pkg}' . $param{cflags}
+  $param{cflags} = '-I${includedir}' . $param{cflags}
      if defined $param{pkg};
 
   $param{cflags} ||= '-I${includedir}';
