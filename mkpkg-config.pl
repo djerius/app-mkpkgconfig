@@ -7,7 +7,7 @@ use Getopt::Long;
 use File::Basename;
 use File::Spec::Functions;
 
-our ( $VERSION ) = '$Revision: 1.1.1.1 $' =~ /([\d.]+)/;
+our ( $VERSION ) = '$Revision: 1.1 $' =~ /([\d.]+)/;
 our $prog   = basename( $0, '.pl' );
 
 our %param;
