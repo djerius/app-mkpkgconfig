@@ -7,7 +7,7 @@ use Getopt::Long;
 use File::Basename;
 use File::Spec::Functions;
 
-our ( $VERSION ) = '$Revision: 1.3 $' =~ /([\d.]+)/;
+our ( $VERSION ) = '$Revision: 1.4 $' =~ /([\d.]+)/;
 our $prog   = basename( $0, '.pl' );
 
 our %param;
@@ -79,6 +79,7 @@ sub parse_opts
 		    exec_suffix=s
 		    libdir=s
 		    includedir=s
+		    rpath
 
 		    pkg=s
 		    name=s
@@ -124,9 +125,12 @@ sub parse_opts
   # preceded by it.
   $param{libs} ||= $param{pkg} || '';
 
-  $param{libs} = join( ' ', 
-		       ( $param{libdir} ? '-L${libdir}' : () ),
-		       map { /^[-\/.]/ ? $_ : '-l' . $_ } 
+  $param{libs} = 
+    join( ' ',
+	  ( $param{libdir} ?
+	    ('-L${libdir}', ($param{rpath} ? '-R${libdir}' : ())) : () ),
+
+	  map { /^[-\/.]/ ? $_ : '-l' . $_ } 
 		       split(/\s+|\s*,\s*/, $param{libs} ) );
 
   $param{cflags} = '-I${includedir}' . $param{cflags}
@@ -235,7 +239,7 @@ This is taken from the B<--conflicts> option.
 =item I<Libs>
 
 This is generated from the C<libdir> variable and the B<--libs>
-option.  If C<libdir> is not i<empty>, C<-L${libdir}> is prepended to
+option.  If C<libdir> is not I<empty>, C<-L${libdir}> is prepended to
 I<Libs>.  If C<--libs> is not specified, C<-l${pkg}> is added (if
 B<--pkg> is specified).
 
@@ -311,6 +315,18 @@ This parameter is required.
 =item --cflags
 
 =back
+
+=head2 Modifiers
+
+=over
+
+=item --rpath
+
+This boolean indicates that C<-R${libdir}> should be added to the
+I<Libs> section.
+
+=back
+
 
 =head1 EXAMPLES
 
