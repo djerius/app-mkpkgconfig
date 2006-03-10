@@ -7,7 +7,7 @@ use Getopt::Long;
 use File::Basename;
 use File::Spec::Functions;
 
-our ( $VERSION ) = '$Revision: 1.4 $' =~ /([\d.]+)/;
+our ( $VERSION ) = '$Revision: 1.5 $' =~ /([\d.]+)/;
 our $prog   = basename( $0, '.pl' );
 
 our %param;
@@ -77,6 +77,7 @@ sub parse_opts
 
 		    prefix=s
 		    exec_suffix=s
+		    exec_prefix=s
 		    libdir=s
 		    includedir=s
 		    rpath
