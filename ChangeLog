@@ -1,0 +1,25 @@
+2006-03-10 13:57  dj
+
+	* mkpkg-config.pl: the option exec_prefix was documented but not
+	  available
+
+2005-02-07 16:53  dj
+
+	* mkpkg-config.pl: add rpath option
+
+2004-09-27 19:23  dj
+
+	* mkpkg-config.pl: updated docs
+
+2004-09-27 18:59  dj
+
+	* mkpkg-config.pl: includdir had too many instances of ${pkg}
+
+2004-06-04 13:47  dj
+
+	* GNUmakefile, mkpkg-config.pl: Initial revision
+
+2004-06-04 13:47  dj
+
+	* GNUmakefile, mkpkg-config.pl: [no log message]
+
