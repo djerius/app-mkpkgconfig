@@ -30,3 +30,4 @@ POD_DIR =
 
 # make sure the generated file is distributed
 EXTRA_DIST 		+= $(PODS:%=%$(POD_SFX))
+MAINTAINERCLEANFILES	+= $(PODS:%=%$(POD_SFX))
