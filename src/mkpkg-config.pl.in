@@ -134,22 +134,22 @@ sub parse_opts
   die( "can't specify both exec_suffix and exec_prefix\n" )
     if exists $param{exec_prefix} && $param{exec_suffix};
 
-  $param{exec_prefix} ||= '${prefix}';
+  $param{exec_prefix} //= '${prefix}';
 
   $param{exec_prefix} = catfile('${prefix}', $param{exec_suffix} )
     if defined $param{exec_suffix};
 
   exists $param{libdir} or 
-    $param{libdir}= catfile('${exec_prefix}', 'lib' );
+    $param{libdir} = catfile('${exec_prefix}', 'lib' );
 
-  $param{includedir}  ||= catfile('${prefix}', 'include',
-				  $param{pkg} || ()
+  $param{includedir} //= catfile('${prefix}', 'include',
+				  $param{pkg} // ()
 				 );
 
   # generate libs field
   # add the libdir if it's there. also, add -l to arguments which aren't
   # preceded by it.
-  $param{libs} ||= $param{pkg} || '';
+  $param{libs} //= $param{pkg} // '';
 
   $param{libs} = 
     join( ' ',
@@ -162,7 +162,7 @@ sub parse_opts
   $param{cflags} = join(' ', '-I${includedir}', $param{cflags} )
      if defined $param{pkg};
 
-  $param{cflags} ||= '-I${includedir}';
+  $param{cflags} //= '-I${includedir}';
 
 }
 
