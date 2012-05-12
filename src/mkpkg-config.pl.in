@@ -159,7 +159,7 @@ sub parse_opts
 	  map { /^[-\/.]/ ? $_ : '-l' . $_ } 
 		       split(/\s+|\s*,\s*/, $param{libs} ) );
 
-  $param{cflags} = '-I${includedir}' . $param{cflags}
+  $param{cflags} = join(' ', '-I${includedir}', $param{cflags} )
      if defined $param{pkg};
 
   $param{cflags} ||= '-I${includedir}';
