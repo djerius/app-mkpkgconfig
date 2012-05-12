@@ -3,7 +3,7 @@
 AC_PREREQ([2.57])
 
 
-AC_INIT([mkpkg-config],[1.5.1],[http://jeeves.cfa.harvard.edu/bugzilla/],[mkpkg-config])
+AC_INIT([mkpkg-config],[1.5.2],[opticsoft@head.cfa.harvard.edu],[mkpkg-config])
 AM_INIT_AUTOMAKE([ check-news ])
 
 AC_CONFIG_SRCDIR([src/mkpkg-config.pl.in])

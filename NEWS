@@ -1,3 +1,9 @@
+1.5.2 :
+
+[BUG FIX]
+
+* if  --pkg was specified cflags was corrupted
+
 1.5.1 :
 
 * initial public release
