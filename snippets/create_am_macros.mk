@@ -1,6 +1,8 @@
 #============================================================================
 # create_am_macros.mk
 
+CREATE_AM_MACROS_MK =
+
 include $(top_srcdir)/snippets/am_vars.mk
 include $(top_srcdir)/snippets/inst_vars.mk
 
