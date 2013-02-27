@@ -17,8 +17,8 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the 
-#       Free Software Foundation, Inc. 
+# along with this program; if not, write to the
+#       Free Software Foundation, Inc.
 #       51 Franklin Street, Fifth Floor
 #       Boston, MA  02110-1301, USA
 #
@@ -33,7 +33,7 @@ use File::Basename;
 use File::Spec::Functions;
 
 our $VERSION = '@VERSION@';
-our $prog   = basename( $0, '.pl' );
+our $prog = basename( $0, '.pl' );
 
 our %param;
 
@@ -43,135 +43,134 @@ do { warn $@; exit 1 } if $@;
 
 exit 0;
 
-sub main
-{
-  my @sARGV = @ARGV;
-  parse_opts();
+sub main {
+    my @sARGV = @ARGV;
+    parse_opts();
 
-  help( 1 ) if $param{help};
-  help( 2 ) if $param{usage};
+    help( 1 ) if $param{help};
+    help( 2 ) if $param{usage};
 
-  do { print( "$prog $VERSION\n" ); return }
-    if $param{version};
+    do { print( "$prog $VERSION\n" ); return }
+      if $param{version};
 
-  open( CONF, ">$param{output}" )
-    or die ( "unable to open output stream\n" );
+    open( CONF, ">$param{output}" )
+      or die( "unable to open output stream\n" );
 
-  print CONF "# This file was created by $prog ($VERSION)\n";
-  print CONF join(' ', "# $prog", @sARGV), "\n";
+    print CONF "# This file was created by $prog ($VERSION)\n";
+    print CONF join( ' ', "# $prog", @sARGV ), "\n";
 
-  printf CONF "%s=%s\n", $_, $param{$_}
-    foreach grep { defined $param{$_} }
+    printf CONF "%s=%s\n", $_, $param{$_}
+      foreach grep { defined $param{$_} }
       qw /pkg prefix exec_prefix libdir includedir/;
 
-  print CONF "\n";
+    print CONF "\n";
 
-  foreach (
-	   [ name  => 'Name' ],
-	   [ desc  => 'Description' ],
-	   [ pversion => 'Version' ],
-	   [ req   => 'Requires' ],
-	   [ conf  => 'Conflicts' ],
-	   [ libs  => 'Libs' ],
-	   [ cflags => 'Cflags' ] )
-  {
-    exists $param{$_->[0]} and 
-      printf CONF "%s: %s\n", $_->[1], $param{$_->[0]};
-  }
+    foreach (
+        [ name     => 'Name' ],
+        [ desc     => 'Description' ],
+        [ pversion => 'Version' ],
+        [ req      => 'Requires' ],
+        [ conf     => 'Conflicts' ],
+        [ libs     => 'Libs' ],
+        [ cflags   => 'Cflags' ] )
+    {
+        exists $param{ $_->[0] }
+          and printf CONF "%s: %s\n", $_->[1], $param{ $_->[0] };
+    }
 }
 
 
-sub parse_opts
-{
+sub parse_opts {
 
-  %param = (
-	    output => '-',
-	    prefix => undef,
-	    pversion => undef,
-	    cflags => '',
-	    desc => undef,
-	    name => undef,
-	   );
+    %param = (
+        output   => '-',
+        prefix   => undef,
+        pversion => undef,
+        cflags   => '',
+        desc     => undef,
+        name     => undef,
+    );
 
-  eval {
-    local $SIG{__WARN__} = sub { die $_[0] };
+    eval {
+        local $SIG{__WARN__} = sub { die $_[0] };
 
-    GetOptions( \%param,
-                qw (
-                    output=s
+        GetOptions(
+            \%param,
+            qw (
+              output=s
 
-		    prefix=s
-		    exec_suffix=s
-		    exec_prefix=s
-		    libdir=s
-		    includedir=s
-		    rpath
+              prefix=s
+              exec_suffix=s
+              exec_prefix=s
+              libdir=s
+              includedir=s
+              rpath
 
-		    pkg=s
-		    name=s
-		    desc=s
-		    pversion=s
-		    requires=s
-		    conflicts=s
-		    libs=s
-		    cflags=s
+              pkg=s
+              name=s
+              desc=s
+              pversion=s
+              requires=s
+              conflicts=s
+              libs=s
+              cflags=s
 
-                    version
-                    help
-                    usage
-                   ),
-	      );
-  };
+              version
+              help
+              usage
+              ),
+        );
+    };
 
-  die $@ if $@;
+    die $@ if $@;
 
-  return if $param{help} or $param{usage} or $param{version};
+    return if $param{help} or $param{usage} or $param{version};
 
-  my @notset = grep { !defined $param{$_} } keys %param;
-  die ( 'parameter(s) `' , join( "`, `", @notset ), "' are not set\n" )
-    if @notset;
+    my @notset = grep { !defined $param{$_} } keys %param;
+    die( 'parameter(s) `', join( "`, `", @notset ), "' are not set\n" )
+      if @notset;
 
-  die( "can't specify both exec_suffix and exec_prefix\n" )
-    if exists $param{exec_prefix} && $param{exec_suffix};
+    die( "can't specify both exec_suffix and exec_prefix\n" )
+      if exists $param{exec_prefix} && $param{exec_suffix};
 
-  $param{exec_prefix} //= '${prefix}';
+    $param{exec_prefix} //= '${prefix}';
 
-  $param{exec_prefix} = catfile('${prefix}', $param{exec_suffix} )
-    if defined $param{exec_suffix};
+    $param{exec_prefix} = catfile( '${prefix}', $param{exec_suffix} )
+      if defined $param{exec_suffix};
 
-  exists $param{libdir} or 
-    $param{libdir} = catfile('${exec_prefix}', 'lib' );
+    exists $param{libdir}
+      or $param{libdir} = catfile( '${exec_prefix}', 'lib' );
 
-  $param{includedir} //= catfile('${prefix}', 'include',
-				  $param{pkg} // ()
-				 );
+    $param{includedir} //= catfile( '${prefix}', 'include', $param{pkg} // () );
 
-  # generate libs field
-  # add the libdir if it's there. also, add -l to arguments which aren't
-  # preceded by it.
-  $param{libs} //= $param{pkg} // '';
+    # generate libs field
+    # add the libdir if it's there. also, add -l to arguments which aren't
+    # preceded by it.
+    $param{libs} //= $param{pkg} // '';
 
-  $param{libs} = 
-    join( ' ',
-	  ( $param{libdir} ?
-	    ('-L${libdir}', ($param{rpath} ? '-R${libdir}' : ())) : () ),
+    $param{libs} = join(
+        ' ',
+        (
+            $param{libdir}
+            ? ( '-L${libdir}', ( $param{rpath} ? '-R${libdir}' : () ) )
+            : ()
+        ),
 
-	  map { /^[-\/.]/ ? $_ : '-l' . $_ } 
-		       split(/\s+|\s*,\s*/, $param{libs} ) );
+        map { /^[-\/.]/ ? $_ : '-l' . $_ }
+          split( /\s+|\s*,\s*/, $param{libs} ) );
 
-  $param{cflags} = join(' ', '-I${includedir}', $param{cflags} )
-     if defined $param{pkg};
+    $param{cflags} = join( ' ', '-I${includedir}', $param{cflags} )
+      if defined $param{pkg};
 
-  $param{cflags} //= '-I${includedir}';
+    $param{cflags} //= '-I${includedir}';
 
 }
 
-sub help
-{
-  my ( $verbose ) = @_;
+sub help {
+    my ( $verbose ) = @_;
 
-  require Pod::Usage;
-  Pod::Usage::pod2usage ( { -exitval => 0, -verbose => $verbose } );
+    require Pod::Usage;
+    Pod::Usage::pod2usage( { -exitval => 0, -verbose => $verbose } );
 }
 
 __END__
