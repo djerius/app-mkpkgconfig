@@ -14,6 +14,8 @@ AC_PROG_INSTALL
 
 m4_include(snippets/pod_docs.ac)
 
+MST_DOSUBST
+
 # Checks for libraries.
 AC_PROG_PERL_MODULES( 
 			Getopt::Long

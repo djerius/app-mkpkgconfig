@@ -14,9 +14,11 @@ include $(top_srcdir)/snippets/inst_vars.mk
 #
 # we've missed defining one here.
 
+# local build scripts
+noinst_SCRIPTS		=
 
 # sources that must be made prior to compilation
-BUILT_SOURCES           = 
+BUILT_SOURCES           =
 
 # extra files to add to the distribution
 EXTRA_DIST              =
@@ -25,13 +27,13 @@ EXTRA_DIST              =
 MOSTLYCLEANFILES	=
 
 # Any other files make built
-CLEANFILES              = 
+CLEANFILES              =
 
 # Any files configure built
-DISTCLEANFILES          = 
+DISTCLEANFILES          =
 
 # Any files maintainer built (with autoconf, automake, etc)
-MAINTAINERCLEANFILES    = 
+MAINTAINERCLEANFILES    =
 
 # Extra suffixes for automake
 SUFFIXES		=

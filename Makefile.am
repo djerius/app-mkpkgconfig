@@ -36,3 +36,5 @@ MAINTAINERCLEANFILES	+= \
 #-------------------------------------------------------------------
 # Snippets go after here, unless their docs say otherwise
 # Any files make built
+
+include $(top_srcdir)/aminclude_static.am

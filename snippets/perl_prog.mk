@@ -1,7 +1,7 @@
 #============================================================================
 # perl_prog.mk
 #
-# "compile" *.pl files to *.  substitutes into *.pl.in to generate %.pl
+# "compile" *.pl files to *.
 
 PERL_PROG_MK =
 

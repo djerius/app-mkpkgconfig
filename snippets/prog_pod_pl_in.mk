@@ -8,8 +8,8 @@
 
 
 # Prerequisites:
-#	create_am_macros.mk
-#	substitute_config_variables.mk
+CREATE_AM_MACROS_MK +=
+DOSUBST_MK +=
 
 # The caller must define
 #  PODS    - the list of documentation, basenames only
@@ -18,7 +18,7 @@
 	rm -f $@
 	p="$@"; f=$(strip_dir) \
 	f=`echo $$f | sed -e 's|[.]pod$$||'` \
-	 && $(do_subst) $(srcdir)/$$f.pl.in > $@.tmp
+	 && $(dosubst) $(srcdir)/$$f.pl.in > $@.tmp
 	mv $@.tmp $@
 
 include $(top_srcdir)/snippets/prog_pod_base.mk

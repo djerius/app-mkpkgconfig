@@ -30,7 +30,7 @@ MAINTAINERCLEANFILES    += Makefile.in
 # Snippets go after here, unless their docs say otherwise
 
 # all of the rules to generate perl executables
-include $(top_srcdir)/snippets/substitute_config_variables.mk
+include $(top_srcdir)/snippets/dosubst.mk
 include $(top_srcdir)/snippets/perl_compile.mk
 include $(top_srcdir)/snippets/perl_prog.mk
 include $(top_srcdir)/snippets/perl_subst.mk
