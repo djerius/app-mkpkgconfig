@@ -1,8 +1,40 @@
-2012-05-12  Diab Jerius  <dj@macabre.cfa.harvard.edu>
+2013-02-27  Diab Jerius  <dj@macabre.cfa.harvard.edu>
 
-	Tag 1.5.2
+	* Tag 1.5.3
 
-2012-05-12 09:57 -0400  djerius  <djerius@cfa.harvard.edu>  (4cef62c1cab1 [tip])
+2013-02-27 17:58 -0500  Diab Jerius  <djerius@cfa.harvard.edu>  (d161b99b22fb [tip])
+
+	* snippets/dosubst.mk, snippets/perl_subst.mk: new file.
+	* snippets/substitute_config_variables.mk: deleted file.
+	* Makefile.am, configure.ac, mstbuild.cfg,
+	snippets/create_am_macros.mk, snippets/dosubst.mk,
+	snippets/perl_compile.mk, snippets/perl_prog.mk,
+	snippets/perl_subst.mk, snippets/prog_pod_pl_in.mk,
+	snippets/substitute_config_variables.mk, src/Makefile.am:
+	update snippets; update to work with dosubst.mk snippet
+
+2013-02-27 17:57 -0500  Diab Jerius  <djerius@cfa.harvard.edu>  (cc4bd2aa4c8f)
+
+	* src/mkpkg-config.pl.in:
+	switch -rpath to use Gnu loader options, add -Rpath to do it the
+	Solaris way
+
+2013-02-27 16:51 -0500  Diab Jerius  <djerius@cfa.harvard.edu>  (245969b8fb24)
+
+	* src/mkpkg-config.pl.in:
+	reformat code
+
+2012-05-12 10:01 -0400  djerius  <djerius@cfa.harvard.edu>  (9d6c4a876d0c)
+
+	* .hgtags:
+	Added tag 1.5.2 for changeset 513cdb701bb7
+
+2012-05-12 10:01 -0400  djerius  <djerius@cfa.harvard.edu>  (513cdb701bb7 [1.5.2])
+
+	* ChangeLog, NEWS, configure.ac:
+	update logs and version for release
+
+2012-05-12 09:57 -0400  djerius  <djerius@cfa.harvard.edu>  (4cef62c1cab1)
 
 	* snippets/am_vars.mk, snippets/create_am_macros.mk,
 	snippets/inst_vars.mk, snippets/perl_compile.mk,
