@@ -1,5 +1,8 @@
 DOSUBST_MK =
 
+## Prerequisites:
+MST_DOSUBST_M4          +=
+
 BUILT_SOURCES		+= dosubst
 
 noinst_SCRIPTS		+= dosubst
@@ -16,6 +19,6 @@ dosubst : dosubst.in
 	( cd $(top_builddir); ./config.status --file=$(subdir)/$@ )
 
 dosubst.in : $(top_srcdir)/configure.ac
-	( cd $(top_srcdir); autoconf -t 'AC_SUBST_TRACE:$$1' ) | $(PERL) $(top_builddir)/mk-dosubst > $@
+	( cd $(top_srcdir); autoconf -t 'AC_SUBST_TRACE:$$1' -t 'AC_SUBST_FILE:$$1' ) | $(PERL) $(top_builddir)/mk-dosubst > $@
 
 dosubst = $(PERL) $(builddir)/dosubst $(DOSUBST_ARGS)

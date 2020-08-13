@@ -10,7 +10,10 @@ DOSUBST_MK +=
 
 PERL_SUBST_DEPS = Makefile
 
+SUFFIXES += .pl.in .pl .pm.in .pm
+
 # substitution rule
-%.pl : %.pl.in $(PERL_SUBST_DEPS)
-	p="$@"; f=$(strip_dir) \
-	$(dosubst) $(srcdir)/$$f.in > $$f || { rm $$f ; false ; }
+.pl.in.pl : $(PERL_SUBST_DEPS)
+	$(dosubst) < $< > $@
+.pm.in.pm : $(PERL_SUBST_DEPS)
+	$(dosubst) < $< > $@

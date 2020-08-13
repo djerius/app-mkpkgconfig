@@ -1,30 +1,7 @@
-# Create automake macros.
-include $(top_srcdir)/snippets/create_am_macros.mk
+bin_SCRIPTS	+= %D%/mkpkg-config
 
-# The Perl source is package.pl.in.  If not, adjust CLEANFILES and EXTRA_DIST!
-# Make sure to use @PERL@ and @VERSION@ in the .in file.
-
-bin_SCRIPTS	= mkpkg-config
-
-#-------------------------------------------------------------------
-#
-
-#!!! Only use += for the following automake macros!
-
-# sources that must be made prior to compilation
-BUILT_SOURCES           += 
-
-# extra files to add to the distribution
-EXTRA_DIST              += mkpkg-config.pl.in
-
-# Any files make built.
-CLEANFILES              += $(bin_SCRIPTS) mkpkg-config.pl
-
-# Any files configure built
-DISTCLEANFILES          +=
-
-# Any files maintainer built(with autoconf, automake, etc)
-MAINTAINERCLEANFILES    += Makefile.in
+EXTRA_DIST              += %D%/mkpkg-config.pl.in
+CLEANFILES              += %D%/$(bin_SCRIPTS) %D%/mkpkg-config.pl
 
 #-------------------------------------------------------------------
 # Snippets go after here, unless their docs say otherwise
@@ -35,9 +12,13 @@ include $(top_srcdir)/snippets/perl_compile.mk
 include $(top_srcdir)/snippets/perl_prog.mk
 include $(top_srcdir)/snippets/perl_subst.mk
 
-# this must be an explicit list of man pages; no make variables allowed.
-# currently, only section l man pages are supported.
-dist_manl_MANS = mkpkg-config.l
+include $(top_srcdir)/snippets/doc_dirs.mk
+include $(top_srcdir)/snippets/doc_man_init.mk
 
-PODS = mkpkg-config
-include $(top_srcdir)/snippets/prog_pod_pl_in.mk
+%C%_POD_SFX        = .pl
+%C%_dist_manl_MANS = %D%/$(PACKAGE_NAME).l
+%C%_PODS           = %D%/$(PACKAGE_NAME)
+%C%_POD_HTML       = %D%/$(PACKAGE_NAME).html
+%C%_POD_PDF        = %D%/$(PACKAGE_NAME).pdf
+
+include %D%/pod_all.mk

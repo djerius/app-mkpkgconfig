@@ -1,19 +1,7 @@
 include $(top_srcdir)/snippets/create_am_macros.mk
 
-SUBDIRS			= \
-			src
-
-#-------------------------------------------------------------------
-#
-
-# sources that must be made prior to compilation
-BUILT_SOURCES           += 
-
-# extra files to add to the distribution
-EXTRA_DIST              +=
-
-# Any files make built
-CLEANFILES              += 
+ACLOCAL_AMFLAGS = -I m4 --install
+include $(top_srcdir)/aminclude_static.am
 
 # Any files configure built
 DISTCLEANFILES          += config.cache
@@ -33,8 +21,5 @@ MAINTAINERCLEANFILES	+= \
 			mkinstalldirs
 
 
-#-------------------------------------------------------------------
-# Snippets go after here, unless their docs say otherwise
-# Any files make built
+include %D%/src/Makefile.am
 
-include $(top_srcdir)/aminclude_static.am

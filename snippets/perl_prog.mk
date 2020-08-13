@@ -14,6 +14,6 @@ PERL_COMPILE_MK +=
 % : %.pl Makefile
 	cp $< $@
 	chmod +x $@
-	p="$@"; pp="$@" ; f=$(strip_dir) \
+	p="$@"; pp="$@" ; f=$(strip_dir); \
 	test "$$p" = "$$f" && pp="./$$pp" ; \
 	$(PERL_COMPILE) $$pp || { rm $@; false ; }
