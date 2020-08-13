@@ -28,156 +28,396 @@
 use strict;
 use warnings;
 
+use Syntax::Construct qw( // %slice );
+use feature 'say';
+
 use Getopt::Long qw[ :config no_ignore_case ];
 use File::Basename;
 use File::Spec::Functions;
+use Regexp::Common 'balanced';
+use Carp;
 
 our $VERSION = '@VERSION@';
 our $prog = basename( $0, '.pl' );
 
-our %param;
+use constant {
+    ALL_VARS       => 1,
+    REQUESTED_VARS => 2,
+    NEEDED_VARS    => 3,
+};
 
-eval { main() };
+my %VarsAuto = (
+    exec_prefix       => '${prefix}',
 
-do { warn $@; exit 1 } if $@;
+    bindir            => '${exec_prefix}/bin',
+    sbindir           => '${exec_prefix}/sbin',
 
-exit 0;
+    libdir            => '${exec_prefix}/lib',
+    pkg_libdir        => '${libdir}/${package}',
+
+    libexecdir        => '${exec_prefix}/libexec',
+    pkg_libexecdir    => '${libexecdir}/${package}',
+
+    datarootdir       => '${prefix}/share',
+
+    datadir           => '${datarootdir}',
+    pkg_datadir       => '${datadir}/${package}',
+
+    sysconfdir        => '${prefix}/etc',
+    pkg_sysconfdir    => '${sysconfdir}/${package}',
+
+    localstatedir     => '${prefix}/var',
+    pkg_localstatedir => '${localstatedir}/${package}',
+
+    includedir        => '${prefix}/${include}',
+    pkg_includedir    => '${includedir}/${pkg}',
+
+    docdir            => '${datarootdir}/doc/${package}',
+    infodir           => '${datarootdir}/info',
+    mandir            => '${datarootdir}/man',
+);
+
+my %KeywordOptions = (
+                      Name => { required => 1 },
+                      Description => { required => 1 },
+                      Requires => { required => 0 },
+                      Libs => { required => 0 },
+                      Conflicts => { required => 0 },
+                     );
+
+main() unless caller;
 
 sub main {
     my @sARGV = @ARGV;
-    parse_opts();
+    my $opt   = parse_opts();
 
-    help( 1 ) if $param{help};
-    help( 2 ) if $param{usage};
+    my $conf = My::PkgConfig->new(
+        $opt->output,
+        "This file was created by $prog ($VERSION) via",
+        join( ' ', "$prog", @sARGV ) );
 
-    do { print( "$prog $VERSION\n" ); return }
-      if $param{version};
+    my @vars_requested = keys %{ $opt->var };
 
-    open( CONF, ">$param{output}" )
-      or die( "unable to open output stream\n" );
-
-    print CONF "# This file was created by $prog ($VERSION)\n";
-    print CONF join( ' ', "# $prog", @sARGV ), "\n";
-
-    printf CONF "%s=%s\n", $_, $param{$_}
-      foreach grep { defined $param{$_} }
-      qw /pkg prefix exec_prefix libdir includedir/;
-
-    print CONF "\n";
-
-    foreach (
-        [ name     => 'Name' ],
-        [ desc     => 'Description' ],
-        [ pversion => 'Version' ],
-        [ req      => 'Requires' ],
-        [ conf     => 'Conflicts' ],
-        [ libs     => 'Libs' ],
-        [ cflags   => 'Cflags' ] )
-    {
-        exists $param{ $_->[0] }
-          and printf CONF "%s: %s\n", $_->[1], $param{ $_->[0] };
+    # copy required variables into variable hash if not already
+    # defined.
+    for my $var ( qw( prefix package) ) {
+        next if exists $opt->var->{$var};
+        $opt->var->{$var} = $opt->$var;
     }
+    $opt->var->{version} = $opt->modversion;
+
+    # same with keywords
+    for my $kwd ( keys %KeywordOptions ) {
+        next if exists $opt->kwd->{$kwd};
+        my $mth = lc $kwd;
+        $opt->kwd->{$kwd} = $opt->$mth // next;
+    }
+    $opt->kwd->{Version} = '${version}';
+
+    my %vars_auto;
+    my @vars_auto;
+    if ( defined $opt->auto ) {
+        @vars_auto = @{ $opt->auto } ? @{ $opt->auto } : keys %VarsAuto;
+        %vars_auto = %VarsAuto{@vars_auto};
+
+        while ( my ( $var, $value ) = each %VarsAuto ) {
+            die( "request for unknown auto variable $var\n" )
+              unless exists $VarsAuto{$var};
+            next if exists $opt->var->{$var};
+            $opt->var->{$var} = $value;
+        }
+    }
+
+    my %var_deps = find_dependencies( $opt->var, $opt->var );
+    my %kwd_deps = find_dependencies( $opt->kwd, $opt->var );
+
+    my @vars_needed;
+    # output all variables, used or not, (including auto if --auto was requested)
+    if ( $opt->usevars == ALL_VARS ) {
+        @vars_needed = keys %{ $opt->var };
+    }
+
+    # output only requested (--var variable=value, --auto=variable,variable ) + keyword dependencies
+    elsif ( $opt->usevars == REQUESTED_VARS ) {
+        @vars_needed = ( @vars_requested, @{ $opt->auto // [] }, map { @$_ } values %kwd_deps  );
+    }
+
+    # only variables actually used by keywords
+    elsif ( $opt->usevars == NEEDED_VARS ) {
+        @vars_needed
+          = only_used( \%kwd_deps, \%var_deps );
+    }
+
+    #
+    else {
+        die( "unknown filter for variables: ", $opt->usevars, "\n" );
+    }
+
+    $conf->write_variable( $_, $opt->var->{$_} )
+      foreach order_variables( \%var_deps, @vars_needed );
+
+    $conf->empty_line;
+
+    $conf->write_keyword( $_, $opt->kwd->{$_} )
+      foreach order_keywords( $opt->kwd );
 }
 
+sub find_dependencies {
+    my ( $expr, $variables ) = @_;
+
+    my %deps;
+
+    keys %{$expr};    # reset internal index
+    while ( my ( $variable, $value ) = each %{$expr} ) {
+
+        my @depends = map { s/(?:^[{])|(?:[}]$)//gr }
+          $value =~ /(?<!\$)\$$RE{balanced}{-parens => '{}'}/g;
+        $deps{$variable} = \@depends;
+
+        my @undefined = grep { !exists $variables->{$_} } @depends;
+        die( "'$variable' depends upon one or more undefined variables: ",
+            join( ', ', @undefined ), "\n" )
+          if @undefined;
+    }
+
+    return %deps;
+}
+
+sub only_used {
+
+    my ( $kwd, $var ) = @_;
+
+    # variables used in kwds
+    my @need = map { @{$_} } values %$kwd;
+
+    # iteratively flush out the nested dependencies
+    my %vars;
+    while ( @need ) {
+        my $need = shift @need;
+        if ( !exists $vars{$need} ) {
+            push @need, values @{ $var->{$need} };
+            $vars{$need} = undef;    # just need hash entry
+        }
+    }
+
+    return keys %vars;
+}
+
+sub order_variables {
+
+    my ( $dephash, @needed ) = @_;
+
+    return () unless @needed;
+
+    @needed = do {
+        require List::Util;
+        List::Util::uniq( @needed );
+    };
+
+    require Algorithm::Dependency::Ordered;
+    require Algorithm::Dependency::Source::HoA;
+
+    my $ordered;
+
+    eval {
+        my $deps
+          = Algorithm::Dependency::Ordered->new(
+            source => Algorithm::Dependency::Source::HoA->new( $dephash ) )
+          or die( "error creating dependency object\n" );
+
+        $ordered = $deps->schedule( @needed );
+
+        if ( !defined $ordered ) {
+            die( "error in variable dependencies: perhaps there's cycle?\n" ),;
+        }
+    };
+
+    if ( length( my $err = $@ ) ) {
+        require Data::Dumper;
+        die( $err,
+            Data::Dumper->Dump( [ $dephash, \@needed ], [qw( deps needed )] ) );
+    }
+
+    # move variables with no dependencies to the beginning of the list
+    # to make it more human friendly
+    my @nodeps = sort grep { !@{ $dephash->{$_} } } @$ordered;
+
+
+    if ( @nodeps ) {
+        my %nodeps;
+        @nodeps{@nodeps} = ();
+        $ordered = [ @nodeps, grep { !exists $nodeps{$_} } @$ordered ];
+    }
+
+    return @{$ordered};
+}
+
+sub order_keywords {
+
+    my $keywords = shift;
+
+    my @first_keys
+      = grep { exists $keywords->{$_} } qw( Name Description Version );
+    my %last_keys;
+    @last_keys{ keys %{$keywords} } = ();
+    delete @last_keys{@first_keys};
+
+    return @first_keys, keys %last_keys;
+}
 
 sub parse_opts {
 
-    %param = (
-        output   => '-',
-        prefix   => undef,
-        pversion => undef,
-        cflags   => '',
-        desc     => undef,
-        name     => undef,
+    require Getopt::Long::Descriptive;
+
+    my %Map_usevars = (
+        'all'       => ALL_VARS,
+        'requested' => REQUESTED_VARS,
+        'needed'    => NEEDED_VARS
     );
 
-    eval {
-        local $SIG{__WARN__} = sub { die $_[0] };
+    my ( $opt, $usage ) = Getopt::Long::Descriptive::describe_options(
+        "%o <options>",
+        [ 'output|o=s', "output [stdout]" ],
+        [
+            'usevars|u:s',
+            "which variables to output",
+            {
+                default   => { reverse %Map_usevars }->{NEED_VARS},
+                callbacks => {
+                    'valid output variables' => sub {
+                        return 1 if defined $Map_usevars{ $_[0] };
+                        die(
+                            "$_[0] isn't one of 'all', 'req', 'requested', or 'used'\n"
+                        );
+                    }
+                } }
+        ],
+        [ 'auto:s@', "generate a default set of variables" ],
+        [ 'list-auto', "output a list of variables generated by the --auto option", { shortcircuit => 1 } ],
 
-        GetOptions(
-            \%param,
-            qw (
-              output=s
+        [],
+        ['Variables:'],
+        [ 'var=s%',    'define variables',   { default  => {} } ],
+        [ 'prefix=s',  "'prefix' variable",  ],
+        [ 'package=s', "'package' variable", { required => 1 } ],
+        [
+            'modversion|modversion=s',
+            '"version" variable and Version keyword)',
+            { required => 1 }
+        ],
 
-              prefix=s
-              exec_suffix=s
-              exec_prefix=s
-              libdir=s
-              includedir=s
-              rpath
-              Rpath
+        [],
+        ['Keywords:'],
 
-              pkg=s
-              name=s
-              desc=s
-              pversion=s
-              requires=s
-              conflicts=s
-              libs=s
-              cflags=s
+        [ 'kwd=s%', 'define keywords', { default => {} } ],
 
-              version
-              help
-              usage
-              ),
-        );
-    };
-
-    die $@ if $@;
-
-    return if $param{help} or $param{usage} or $param{version};
-
-    my @notset = grep { !defined $param{$_} } keys %param;
-    die( 'parameter(s) `', join( "`, `", @notset ), "' are not set\n" )
-      if @notset;
-
-    die( "can't specify both exec_suffix and exec_prefix\n" )
-      if exists $param{exec_prefix} && $param{exec_suffix};
-
-    $param{exec_prefix} //= '${prefix}';
-
-    $param{exec_prefix} = catfile( '${prefix}', $param{exec_suffix} )
-      if defined $param{exec_suffix};
-
-    exists $param{libdir}
-      or $param{libdir} = catfile( '${exec_prefix}', 'lib' );
-
-    $param{includedir} //= catfile( '${prefix}', 'include', $param{pkg} // () );
-
-    # generate libs field
-    # add the libdir if it's there. also, add -l to arguments which aren't
-    # preceded by it.
-    $param{libs} //= $param{pkg} // '';
-
-    $param{libs} = join(
-        ' ',
         (
-            $param{libdir}
-            ? (
-                '-L${libdir}',
-                (
-                      $param{Rpath} ? '-R${libdir}'
-                    : $param{rpath} ? '-Wl,-rpath,${libdir}'
-                    :                 () ) )
-            : ()
+            map { [
+                    qq(\u$_|\l$_=s),
+                    qq("\u$_" keyword),
+                   { ( $KeywordOptions{$_}{required} // 0 ? ( required => 1 ) : ()  ),
+                   },
+                  ]
+              }
+              keys %KeywordOptions
         ),
 
-        map { /^[-\/.]/ ? $_ : '-l' . $_ }
-          split( /\s+|\s*,\s*/, $param{libs} ) );
+        [],
+        ['Miscellaneous::'],
 
-    $param{cflags} = join( ' ', '-I${includedir}', $param{cflags} )
-      if defined $param{pkg};
+        [ 'version|v', 'output version and exit', { shortcircuit => 1 } ],
 
-    $param{cflags} //= '-I${includedir}';
+        [
+            'help|h',
+            'output short help message and exit',
+            { shortcircuit => 1 }
+        ],
+
+        [
+            'manual|m',
+            'output full manual page and exit',
+            { shortcircuit => 1 }
+        ],
+    );
+
+    # rpath
+    #   Rpath
+
+    print( $usage->text ), exit if $opt->help;
+    print( $VERSION, "\n" ), exit if $opt->version;
+    if ( $opt->manual ) {
+        require Pod::Usage;
+        Pod::Usage::pod2usage(
+            { -exitval => 0, -verbose => 2, -output => \*STDOUT } );
+    }
+
+    if ( $opt->list_auto ) {
+        require List::Util;
+        my $length = List::Util::max( map { length($_) } keys %VarsAuto );
+        printf( "%-*s = %s\n", $length, $_, $VarsAuto{$_} ) for sort keys %VarsAuto;
+        exit;
+    }
+
+    if ( defined $opt->auto ) {
+        my @auto = map { split /,/ } @{ $opt->auto };
+        $opt->{auto} = \@auto;
+    }
+
+    $opt->{usevars} = $Map_usevars{ $opt->usevars };
+
+    return $opt;
+}
+
+
+{
+    package # so doesn't get picked up by CPAN
+      My::PkgConfig;
+
+    use IO::File;
+    use IO::Handle;
+    use Carp;
+
+    sub new {
+        my ( $class, $file, @comments ) = @_;
+
+        my $self = bless { file => $file }, $class;
+
+        $self->{fh}
+          = defined $file
+          ? IO::File->new( $file, 'w' )
+          : IO::Handle->new_from_fd( fileno( STDOUT ), 'w' )
+          or croak( "unable to create $file: $!\n" );
+
+        $self->comment( @comments );
+        $self->empty_line;
+        return $self;
+    }
+
+    sub comment {
+        my $self = shift;
+        $self->{fh}->say( "# $_" ) for @_;
+    }
+
+    sub write_variable {
+        my $self = shift;
+        my ( $var, $value ) = @_;
+        $self->{fh}->say( "${var} = ${value}" );
+    }
+
+    sub empty_line {
+        my $self = shift;
+        my ( $var, $value ) = @_;
+        $self->{fh}->say();
+    }
+
+    sub write_keyword {
+        my $self = shift;
+        my ( $keyword, $value ) = @_;
+        $self->{fh}->say( "${keyword}: ${value}" );
+    }
 
 }
 
-sub help {
-    my ( $verbose ) = @_;
-
-    require Pod::Usage;
-    Pod::Usage::pod2usage( { -exitval => 0, -verbose => $verbose } );
-}
 
 __END__
 
@@ -193,91 +433,55 @@ mkpkg-config I<options>
 
 =head1 DESCRIPTION
 
-B<mkpkg-config> creates a B<pkg-config> metadata (C<.pc>) file based
-upon command line options.  It is useful for inclusion in scripts.
+B<mkpkg-config> creates a B<pkg-config> metadata (C<.pc>) file.
+B<pkg-config> variables and keywords are defined on the command line,
+variable dependencies are validated, and the configuration file is output.
+"Standard" variables (such as C<$libdir>, C<$datadir>) may be automatically
+created, and only variables which are used are output.
 
-It generates the following variables which may be interpolated into the
-keywords: 
+=head2 Variables and Keywords
 
-=over
+B<pkg-config> distinguishes between I<variables> and I<keywords>. Values for both may include
+interpolated variables, as in C<< Cflags: -I ${include} >>.
 
-=item C<pkg>
+Some commonly used variables have dedicated command line options:
 
-specifed by the B<--pkg> option.
+  --prefix     : base prefix for paths
+  --package    : filesystem compatible package name
+  --modversion : package version
 
-=item C<prefix>
+(C<--modversion> sets the I<version> variable; the C<--version> flag will output the version of C<mkpkgconfig>).
 
-specified by the B<--prefix> option.
+C<--package> and C<--modversion> are required.  C<--prefix> may be
+required if a keyword requires it or C<--auto> is set and
+auto-generated variables require it.
 
-=item C<exec_prefix>
+Common keywords also have dedicated options:
 
-specified by the B<--exec_prefix> option.  It defaults to
+  --Name
+  --Conflicts
+  --Description
+  --Requires
+  --Libs
+  --Cflags
 
-  exec_prefix=${prefix}
+The C<--Name> and C<--Description> options are required. The
+C<Version> keyword is automatically set to C<< ${version} >>. It is
+not possible to set it directly from the command line.
 
-If the B<--exec_suffix> option is specified instead of
-B<--exec_prefix>, it defaults to
+Other variables and keywords may be specified via the C<--var> and
+C<--kwd> options, respectively:
 
-  exec_prefix=${prefix}/${exec_suffix}
+  --var name=value
+  --kwd name=value
 
-=item C<libdir>
+which may be used more than once.
 
-specified by the B<--libdir> option.  It defaults to
+=head2 Automatically Generated Variables
 
-  libdir=${exec_prefix}/lib
-
-=item C<includedir>
-
-specified by the B<--includedir> option.  It defaults to
-
-  includedir=${prefix}/include
-
-or
-
-  includedir=${prefix}/include/${pkg}
-
-if the B<--pkg> option is specified.
-
-=back
-
-
-The following keywords are also generated:
-
-=over
-
-=item I<Name>
-
-This is taken from the B<--name> option.
-
-=item I<Description>
-
-This is taken from the B<--desc> option.
-
-=item I<Version>
-
-This is taken from the B<--pversion> option.
-
-=item I<Requires>
-
-This is taken from the B<--requires> option.
-
-=item I<Conflicts>
-
-This is taken from the B<--conflicts> option.
-
-=item I<Libs>
-
-This is generated from the C<libdir> variable and the B<--libs>
-option.  If C<libdir> is not I<empty>, C<-L${libdir}> is prepended to
-I<Libs>.  If C<--libs> is not specified, C<-l${pkg}> is added (if
-B<--pkg> is specified).
-
-=item I<Cflags>
-
-This is taken from the B<--cflags> options. If B<--pkg> is specified,
-C<-I${includedir}/${pkg}> is prepended.
-
-=back
+C<mkpkgconfig> can automatically generate a number of "standard"
+variables, such as I<bindir>, I<libdir>, etc, based upon the I<prefix>
+variable.
 
 
 =head1 OPTIONS
@@ -291,80 +495,135 @@ C<-I${includedir}/${pkg}> is prepended.
 Where the configuration file is to be written.  It defaults to the
 standard output stream.
 
-=item --version
+=item --usevars C<all>|C<requested>|C<needed>
 
-Print the version of B<mkpkg-config> and exit.
+Which variables should be output.  It defaults to C<needed>.
 
-=item --help
+=over
 
-Print a short help message and exit.
+=item C<all>
 
-=item --usage
+output all variables, needed or not, including automatically generated
+ones if C<< --auto >> was specified;
 
-Print an extended usage message and exit.
+=item C<requested>
+
+output only requested variables (via-C<< -var variable=value >> or C<<
+--auto=variable,... >>) and keyword dependencies;
+
+=item C<needed>
+
+output only those variables actually used by keywords
+
+=back
 
 =back
 
 =head2 Variables
 
-These are described in detail in L<Description>.
-
 =over
 
-=item --prefix
+=item C<--var> I<name>=I<value>
 
-This parameter is required.
+Set the variable named I<name> to I<value>.
 
-=item --exec_prefix
+=item C<--prefix> I<value>
 
-=item --libdir
+Set the C<prefix> variable.
 
-=item --includedir
+=item C<--package> I<value>
 
-=item --pkg
+Set the C<package> variable
 
-=item --name
+=item C<--modversion> I<value>
 
-This parameter is required.
+Set the C<version> value
 
-=item --desc
+=item C<--auto>
 
-This parameter is required.
+=item C<--auto> I<list of variables>
 
-=item --pversion
+Generate a set of variables.  Use C<--list-auto> to see what is generated.
 
-This parameter is required.
+If passed a list of variable names, those will be output if C<--usevars> is set to C<requested>.
 
-=item --requires
+Individual variables may be overriden using C<--var>.
 
-=item --conflicts
+=item C<--list-auto>
 
-=item --libs
-
-=item --cflags
+Output a list of the automatically generated keywords and exit.
 
 =back
 
-=head2 Modifiers
+=head3 Keywords
 
 =over
 
-=item --rpath
+=item C<--kwd> I<name>=I<value>
 
-This boolean indicates that C<-Wl,--rpath=${libdir}> should be added to the
-I<Libs> section.  Don't use it with B<--Rpath>.
+Set the keyword named I<name> to I<value>.
 
-=item --Rpath
+=item C<--Name>  I<value>
 
-This boolean indicates that C<-R${libdir}> should be added to the
-I<Libs> section.  Don't use it with B<--rpath>.
+=item C<--name> I<value>
+
+Set the I<Name> keyword.
+This parameter is required.
+
+=item C<--Description> I<value>
+
+=item C<--description> I<value>
+
+Set the I<Description> keyword.
+This parameter is required.
+
+=item C<--Requires> I<value>
+
+=item C<--requires> I<value>
+
+Set the I<Requires> keyword.
+
+=item C<--Conflicts> I<value>
+
+=item C<--conflicts>  I<value>
+
+Set the I<Conflicts> keyword.
+
+=item C<--Libs> I<value>
+
+=item C<--libs>  I<value>
+
+Set the I<Libs> keyword.
+
+=item C<--Cflags> I<value>
+
+=item C<--Cflags>  I<value>
+
+Set the I<Cflags> keyword.
 
 =back
 
+=head2 Miscellaneous
+
+=over
+
+=item --version
+
+Output the version of B<mkpkg-config> and exit.
+
+=item --help
+
+Output a short help message and exit.
+
+=item --manual
+
+Output the manual and exit.
+
+=back
 
 =head1 VERSION
 
-This documents version @VERSION@ of B<make-world>.
+This documents version @VERSION@ of B<mkpkgconfig>.
 
 
 =head1 COPYRIGHT AND LICENSE
@@ -373,10 +632,9 @@ This software is copyrighted (2006) by the Smithsonian Astrophysical
 Observatory and is released under the GNU General Public License.  You
 may find a copy at
 
-	http://www.fsf.org/copyleft/gpl.html
+        http://www.fsf.org/copyleft/gpl.html
 
 
 =head1 AUTHOR
 
 Diab Jerius E<lt>djerius@cfa.harvard.eduE<gt>
-
