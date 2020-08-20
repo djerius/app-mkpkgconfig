@@ -2,6 +2,8 @@ Revision history for {{$dist->name}}
 
 {{$NEXT}}
 
+v2.0.0    2020-08-13 16:44:55-04:00 America/New_York
+
   [RENAME]
     * mkpkg-config is now mkpkgconfig to avoid breakage with existing uses
 
