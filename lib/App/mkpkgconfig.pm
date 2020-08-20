@@ -5,7 +5,7 @@ package App::mkpkgconfig;
 use strict;
 use warnings;
 
-our $VERSION = 'v2.0.0';
+our $VERSION = 'v2.0.1';
 
 1;
 

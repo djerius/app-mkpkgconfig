@@ -11,7 +11,7 @@ use File::Basename;
 use File::Spec::Functions;
 use Carp;
 
-our $VERSION = 'v2.0.0';
+our $VERSION = 'v2.0.1';
 
 use constant {
     ALL_VARS       => 1,

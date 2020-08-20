@@ -6,7 +6,7 @@ use warnings;
 
 use Syntax::Construct qw( non-destructive-subst );
 
-our $VERSION = 'v2.0.0';
+our $VERSION = 'v2.0.1';
 
 use Regexp::Common 'balanced';
 
