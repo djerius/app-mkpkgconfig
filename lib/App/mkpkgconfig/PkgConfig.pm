@@ -106,7 +106,7 @@ sub variable {
 
    @variables = $obj->variables;
 
-Return a L<list of App::mkpkgconfig::PkgConfig::Entry::Variable> objects;
+Return a list of L<App::mkpkgconfig::PkgConfig::Entry::Variable> objects;
 
 =cut
 
@@ -131,7 +131,7 @@ sub keyword {
 
    @keywords = $obj->keywords;
 
-Return a L<list of App::mkpkgconfig::PkgConfig::Entry::Keywords> objects;
+Return a list of L<App::mkpkgconfig::PkgConfig::Entry::Keywords> objects;
 
 =cut
 
