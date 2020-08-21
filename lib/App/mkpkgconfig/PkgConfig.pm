@@ -12,7 +12,7 @@ use App::mkpkgconfig::PkgConfig::Entry;
 use constant Keyword => 'App::mkpkgconfig::PkgConfig::Entry::Keyword';
 use constant Variable => 'App::mkpkgconfig::PkgConfig::Entry::Variable';
 
-our $VERSION = 'v2.0.1';
+our $VERSION = 'v2.0.2';
 
 use IO::File   ();
 use IO::Handle ();
